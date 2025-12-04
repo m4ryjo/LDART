@@ -12,7 +12,6 @@ https://doi.org/10.48550/arXiv.2311.00357
 ## Contents
 - `Betula_analysis/` – Scripts for Betula data analyses
 - `Simulation_study/` – Scripts for simulation study
-- `sessionInfo.txt` – Full list of R packages and versions used
 
 ---
 
