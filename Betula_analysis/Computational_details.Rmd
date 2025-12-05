@@ -19,7 +19,8 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-  In this study, we focus on two key effect measures that address truncation by death under hypothetical interventions:
+For the analyses of the Betula data, we focus on two key effect measures that address
+truncation by death under hypothetical interventions:
 
   - **PCIE (Partly Conditional Intervention Effect)**
   Partly conditional models make inference conditional on the sub-population alive at a specific time-point, in our application being alive at end of follow-up, i.e., time \(T\). This approach focuses on prognostic questions:

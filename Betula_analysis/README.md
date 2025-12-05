@@ -1,6 +1,6 @@
 ## Introduction
 
-In this study, we focus on two key effect measures that address
+For the analyses of the Betula data, we focus on two key effect measures that address
 truncation by death under hypothetical interventions:
 
 -   **PCIE (Partly Conditional Intervention Effect)** Partly conditional
