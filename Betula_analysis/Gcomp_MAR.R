@@ -44,28 +44,27 @@ myCluster <- makeCluster(16)
 registerDoParallel(myCluster)
 
 foreach(i=1:16, .packages = c("GcompBART")) %dopar% {
-  
+
   BM <- BMfits(betula_data,
                var.type = vartype_nc,
                drop_param = drop_par,
                opts = opts,
                tgroup = tgroup,
                base_hypers = BaseHypers(num_tree = n_tree))
-  
+
   ##################################################
   # Subset middle aged cohort
   sub_datMA <- subset(betula_data, Age_cohort_T1 < 55)
-  
+
   frsMA <- gcompbart(sub_datMA,
                      var.type = vartype_nc,
                      drop_param = drop_par,
                      J = 10000,
                      opts = opts,
-                     weighted = FALSE,
                      tgroup = tgroup,
                      BModels = BM)
-  
-  frsMA_inc1 <- gcompbart(sub_datMA,
+
+  frsMA_int <- gcompbart(sub_datMA,
                           var.type = vartype_inc,
                           random.regime = rep("triangular", 3),
                           param = list(delta, delta, delta),
@@ -78,11 +77,11 @@ foreach(i=1:16, .packages = c("GcompBART")) %dopar% {
                           opts = opts,
                           tgroup = tgroup,
                           BModels = BM)
-  
+
   ########################################################
   # Subset older cohort
   sub_datO <- subset(betula_data, Age_cohort_T1 > 50)
-  
+
   # Standard regime analysis for older cohort
   frsO <- gcompbart(sub_datO,
                     var.type = vartype_bl,
@@ -91,9 +90,9 @@ foreach(i=1:16, .packages = c("GcompBART")) %dopar% {
                     opts = opts,
                     tgroup = tgroup,
                     BModels = BM)
-  
+
   # Incremental regime analysis for older cohort
-  frsO_inc3 <- gcompbart(sub_datO,
+  frsO_int <- gcompbart(sub_datO,
                          var.type = vartype_inc,
                          random.regime = rep("triangular", 3),
                          param = list(delta, delta, delta),
@@ -106,18 +105,18 @@ foreach(i=1:16, .packages = c("GcompBART")) %dopar% {
                          opts = opts,
                          tgroup = tgroup,
                          BModels = BM)
-  
+
   # Combine outputs
   out <- t(rbind(frsMA$y_hat,
-                 frsMA_inc1$y_hat,
+                 frsMA_int$y_hat,
                  frsMA$s_hat,
-                 frsMA_inc1$s_hat,
+                 frsMA_int$s_hat,
                  frsO$y_hat,
-                 frsO_inc3$y_hat,
+                 frsO_int$y_hat,
                  frsO$s_hat,
-                 frsO_inc3$s_hat))  
-  
-  
+                 frsO_int$s_hat))
+
+
   write.table(out, "MAR_lbart", append=TRUE, col.names = FALSE, row.names = FALSE )
 }
 stopCluster(myCluster)

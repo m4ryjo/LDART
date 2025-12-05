@@ -1,0 +1,145 @@
+---
+title:  "Computing the PCIE and the SAIE"
+author: "Maria Josefsson"
+date: "`r Sys.Date()`"
+number_sections: true
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+  In this study, we focus on two key effect measures that address truncation by death under hypothetical interventions:
+
+  - **PCIE (Partly Conditional Intervention Effect)**
+  Partly conditional models make inference conditional on the sub-population alive at a specific time-point, in our application being alive at end of follow-up, i.e., time \(T\). This approach focuses on prognostic questions:
+  \[
+    \mathrm{PCIE} = E\big[ Y_T(g_*) \mid S_T(g_*) = 1 \big] - E\big[ Y_T(g_0) \mid S_T(g_0) = 1 \big].
+    \]
+
+  - **SAIE (Survivor Average Intervention Effect)**
+  Conditioning on survival as in partly conditional models may introduce bias because survival is a post-randomization event \cite{zhang03}. To address etiological questions, we consider the subpopulation who would survive under both treatment regimes (the “always survivor” stratum) \cite{frangakis02, frangakis07}. The estimand is:
+  \[
+    \mathrm{SAIE} = E\big[ Y(g_*) - Y(g_0) \,\big|\, S_T(g_0) = S_T(g_*) = 1 \big].
+    \]
+
+## The PCIE
+
+Under assumptions **C1**, **C2a**, **C3**, and **C4**, the mean outcome at time \(T\) under the natural course (regime \(g_{0}\)) can be computed using the **g-formula**, conditioning on survival.
+
+For the intervention regime \(g_{*}\), under assumptions **C1**, **C2b**, **C3**, and **C4**, the mean outcome at time \(T\) can be computed using the **Extended g-formula**.
+
+Both the g-formula and the Extended g-formula can be estimated using the functions provided in the GcompBART package, which implements Bayesian machine learning methods for flexible estimation under hypothetical interventions.
+
+The **PCIE** is then obtained as the difference in expected outcomes under the two regimes:
+  \[
+    \mathrm{PCIE} = E\big[ Y_T(g_*) \mid S_T(g_*) = 1 \big] - E\big[ Y_T(g_0) \mid S_T(g_0) = 1 \big].
+    \]
+
+
+## The SAIE
+### Sensitivity Parameter \(\lambda\) (Assumption C5)
+
+The sensitivity parameter \(\lambda\) ranges from 0 to 1 and governs assumptions about survival under different treatment regimes:
+
+- **\(\lambda = 1\)**: Assumes *deterministic monotonicity*, meaning anyone who would survive under the observed regime (\(g_0\)) would also survive under the intervention (\(g_*\)), i.e., \(S_T(g_0) \leq S_T(g_*)\).
+- **\(\lambda = 0\)**: Assumes *independence* between survival under the two regimes (\(S_T(g_0)\) and \(S_T(g_*)\)), which is considered unlikely in this application.
+- **Intermediate values \(0 < \lambda < 1\)**: Represent partial relaxation of monotonicity. As \(\lambda\) decreases from 1 toward 0, the assumption allows increasing dependence between survival under the two regimes to weaken, introducing more uncertainty about who would survive under the intervention compared to the observed regime.
+
+This parameter is used to compute the **Survivor Average Causal Effect (SACE)** under varying assumptions about survival relationships across regimes.
+
+### Sensitivity Parameter for SAIE: \(\Delta\) (Assumption C6)
+
+**C6**: *Difference in expectations of outcomes when comparing different strata.*
+
+  For \(g \in \{g_*, g_0\}\) and \(g' \in \{g_*, g_0\}\) with \(g \neq g'\), we assume:
+  \[
+    E\big[ Y_T(g) \mid S_T(g') = S_T(g) = 1 \big] - E\big[ Y_T(g) \mid S_T(g) = 1, S_T(g') = 0 \big] = \Delta^g,
+    \]
+where \(\Delta^g\) is a sensitivity parameter. We further assume:
+  \[
+    \Delta^g = \Delta^{g'} = \Delta,
+\]
+i.e., the difference in expectations of potential outcomes when comparing different strata is the same for the two contrasting regimes.
+
+- If \(\Delta = 0\): There is **no difference** in potential outcomes between the always-survivor stratum and the stratum where individuals would survive under regime \(g\) but not under \(g'\).
+- If \(\Delta > 0\): The always-survivor stratum has **higher potential outcomes**. In our application, this corresponds to higher memory scores (better memory) for the always-survivor stratum.
+
+### The SAIE Formula
+
+The \(\text{SAIE}\) is given by:
+  \[
+    \mathrm{SAIE} = \mathrm{PCIE} + \Delta \Big\{ \psi^{g_*} + \lambda \big(U - \psi^{g_*}\big) \Big\} \Big(1 - \frac{1}{U}\Big),
+    \]
+where:
+  \[
+    U = \min\Big\{ 1, \frac{\psi^{g_*}}{\psi^{g_0}} \Big\}.
+    \]
+
+This equation represents a **location shift upwards from the PCIE** for a beneficial intervention, where we expect participants to improve their health under the intervention compared to the natural course. The adjustment depends on:
+- \(\Delta\): Sensitivity parameter for differences in potential outcomes across strata.
+- \(\lambda\): Sensitivity parameter controlling dependence between survival under regimes.
+- \(\psi^{g_*}\) and \(\psi^{g_0}\): Survival probabilities under the intervention and natural course.
+
+*Example: Workflow for estimating PCIE using GcompBART.*
+
+```{r example-code, eval = FALSE}
+# Example: Estimating PCIE using GcompBART
+# 1. Fit Bayesian models for natural course
+BM <- BMfits(your_data,
+             var.type = your_vartype_nc,
+             opts = your_opts,
+             tgroup = your_tgroup,
+             base_hypers = your_basehypers)
+
+# 2. Compute g-formula under natural course
+out_nc <- gcompbart(your_data,
+             var.type = your_vartype_nc,
+             opts = your_opts,
+             tgroup = your_tgroup,
+             J = 10000,
+             BModels = BM)
+
+# 3. Compute extended g-formula under intervention regime
+out_int <- gcompbart(your_data,
+             var.type = your_vartype_int,
+             random.regime = rep("triangular", 3),
+             param = list(delta, delta, delta),
+             nat_value = TRUE,
+             above = TRUE,
+             threshold = sb_threshold,
+             incremental = TRUE,
+             opts = your_opts,
+             tgroup = your_tgroup,
+             J = 10000,
+             BModels = BM)
+
+```
+
+### Computing PCIE 
+Compute PCIE as difference between intervention and natural course estimates using the 
+extracted predicted means (y_hat).
+```r
+pcie <- out_int$y_hat - out_nc$y_hat
+
+```
+
+### Computing SAIE
+The Survivor Average Intervention Effect (SAIE) can be computed by combining the PCIE with an adjustment term that accounts for the “always survivor” stratum. Below is an illustrative example using a helper function sace():
+```r
+ps_nc <- out_nc$s_hat
+ps_int <- out_int$s_hat
+
+saie <- pcie + sace(Delta, lambda, ps_int, ps_nc)
+```
+
